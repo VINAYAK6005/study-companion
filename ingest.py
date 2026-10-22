@@ -3,17 +3,20 @@ from pathlib import Path
 
 from pypdf import PdfReader
 from langchain_core.documents import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 DATA_DIR = Path("data/notes")
 PAGE_LINE = re.compile(r"Page \d+")
-PRIVATE_USE = re.compile(r"[\ue000-\uf8ff]")
+BULLET_CHARS = re.compile(r"[\x7f\ue000-\uf8ff]")
+CHUNK_SIZE = 500
+CHUNK_OVERLAP=50
 
 
 def clean_page(text: str, header: str) -> str:
     """Remove the repeated title header and 'Page N' lines from a page."""
     kept = []
     for line in text.splitlines():
-        stripped = PRIVATE_USE.sub("-", line).strip()
+        stripped = BULLET_CHARS.sub("-", line).strip()
         if stripped == header or PAGE_LINE.fullmatch(stripped):
             continue
         kept.append(stripped)
@@ -50,14 +53,26 @@ def load_documents() -> list[Document]:
     return docs
 
 
+def split_documents(docs: list[Document])-> list[Document]:
+    """split pages into overlapping chunks. Metadata is copied to each chunk. """
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size = CHUNK_SIZE,
+        chunk_overlap = CHUNK_OVERLAP,
+    )
+
+    return splitter.split_documents(docs)
+
 if __name__ == "__main__":
     docs = load_documents()
     print(f"Loaded {len(docs)} pages")
 
-    total_chars = sum(len(d.page_content) for d in docs)
-    print(f"Average characters per page: {total_chars // len(docs)}")
+    chunks = split_documents(docs)
+    print(f"Split into {len(chunks)} chunks")
 
-    sample = docs[5]
-    print("\nMetadata:", sample.metadata)
-    print("\nCleaned text:\n")
-    print(sample.page_content[:300])
+    lengths = [len(c.page_content) for c in chunks]
+    print(f"Chunk length: min={min(lengths)}, max={max(lengths)}, "
+          f"avg={sum(lengths) // len(lengths)}")
+
+    print("\nFirst chunk:")
+    print("---", chunks[0].metadata)
+    print(chunks[0].page_content)
