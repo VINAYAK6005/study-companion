@@ -9,7 +9,7 @@ citations, built step by step to learn RAG, LangGraph, and MCP.
 
 ## Progress
 - [x] Project setup and PDF loader
-- [ ] Chunking and embeddings
+- [x] Chunking and embeddings
 - [ ] Basic RAG with citations
 - [ ] LangGraph agent
 - [ ] MCP tools
